@@ -316,10 +316,9 @@ def run_pipeline(pdf_path: str, config: Dict[str, Any], logger: logging.Logger) 
     """
     전체 파이프라인 실행 (Phase 0~4).
 
-    AutoPipeline(Phase 0 프리플라이트 + Phase 2 Claude 호출 + Phase 3 검증 +
-    Phase 4 Excel 생성)은 Group 3/4에서 구현 예정이다. 현재는 Phase 1까지만
-    실제 로직이 있으므로, 전체 실행 요청은 안내 메시지와 함께 명시적으로
-    미구현임을 알린다 (조용히 아무 일도 안 하는 것을 방지).
+    AutoPipeline(Phase 0 프리플라이트 + Phase 1 전처리 + Phase 2 Claude 호출 +
+    Phase 3 검증 + Phase 4 Excel 생성)을 실행하고, 완료 메시지 또는 오류를
+    사람이 읽기 쉬운 형태로 출력한다.
 
     Args:
         pdf_path: 입력 PDF 경로
@@ -329,13 +328,33 @@ def run_pipeline(pdf_path: str, config: Dict[str, Any], logger: logging.Logger) 
     Returns:
         int: 종료 코드 (0=성공, >0=실패)
     """
-    logger.error(
-        "전체 파이프라인(Phase 0~4)은 아직 구현되지 않았습니다 "
-        "(Claude CLI 자동 호출/검증/Excel 생성은 Group 3~4 예정). "
-        "현재는 `--dry-run`으로 Phase 1 전처리 경로만 검증할 수 있습니다: %s",
-        pdf_path,
+    from auto_pipeline import AutoPipeline
+
+    pipeline = AutoPipeline(pdf_path, config, logger)
+    try:
+        result = pipeline.run()
+    except ProjectError as e:
+        logger.error("파이프라인 실행 실패: %s", e)
+        return 1
+    except RuntimeError as e:
+        logger.error("파이프라인 실행 중단: %s", e)
+        return 1
+
+    if not result.success:
+        logger.error("파이프라인 실패 (%s): %s", result.phase, result.error_summary)
+        return 1
+
+    main_output = result.output_files.get("main")
+    print(
+        f"총 {result.total_problems}문제 변환 완료 "
+        f"(자동 확정 {result.auto_confirmed} / 검토 필요 {result.human_review}). "
+        f"엑셀 저장 경로: {main_output}"
     )
-    return 2
+    logger.info(
+        "총 %d문제 변환 완료 (AUTO %d / HUMAN_REVIEW %d). 엑셀 저장 경로: %s",
+        result.total_problems, result.auto_confirmed, result.human_review, main_output,
+    )
+    return 0
 
 
 def main() -> int:
@@ -348,7 +367,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="법학 문제집 PDF → Excel 변환 자동화 (v6)"
     )
-    parser.add_argument("pdf", nargs="?", help="입력 PDF 경로")
+    parser.add_argument("pdf", nargs="?", help="입력 PDF 경로 (--pdf와 동일, 위치 인자로도 지정 가능)")
+    parser.add_argument("--pdf", dest="pdf_flag", default=None, help="입력 PDF 경로")
     parser.add_argument(
         "--dry-run", action="store_true",
         help="Phase 1(전처리) 데이터 흐름만 검증하고 종료 (Claude 호출 없음). "
@@ -356,6 +376,7 @@ def main() -> int:
     )
     parser.add_argument("--config", default="config.yaml", help="config.yaml 경로")
     args = parser.parse_args()
+    args.pdf = args.pdf_flag or args.pdf
 
     try:
         config = load_config(args.config)
