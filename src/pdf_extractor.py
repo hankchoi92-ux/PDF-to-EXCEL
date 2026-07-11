@@ -25,8 +25,20 @@ from schemas import OptionSymbolType
 
 # 문제 번호 패턴 후보 (우선순위 순). 그룹 1은 반드시 숫자를 캡처해야 함.
 # 정규식은 줄 시작(^, MULTILINE)에서만 매칭해 본문 중간의 우연한 숫자를 배제한다.
+#
+# "question_dot"은 원래 "문1." / "문 1)" 처럼 번호 뒤에 마침표·괄호가 붙는
+# 형태만 잡았으나, 일부 PDF는 "문65"처럼 구분자 없이 번호만 붙거나(뒤에는
+# 개행/공백만 옴), 앞에 컬럼/장식 숫자 아티팩트("1 문65")가 붙어 추출되는
+# 경우가 있다(sample(65-67).pdf에서 실측). 기존 "구분자+공백" 분기는 그대로
+# 두고, OR(|)로 "구분자 없이 줄 끝/공백까지만 이어지는" 분기를 추가해 두
+# 형태를 모두 잡는다 — 기존 매칭 동작에는 영향 없음(순수 추가).
 QUESTION_PATTERNS: List[Tuple[str, str, str]] = [
-    ("question_dot", r"(?m)^[ \t]*문[ \t]?(\d{1,3})[ \t]*[.)][ \t]+", "문{N}."),
+    (
+        "question_dot",
+        r"(?m)^[ \t]*(?:\d{1,2}[ \t]+)?문[ \t]?(\d{1,3})"
+        r"(?:[ \t]*[.)][ \t]+|(?=[ \t]*(?:\n|$)))",
+        "문{N}.",
+    ),
     ("bracket", r"(?m)^[ \t]*【[ \t]*(\d{1,3})[ \t]*】[ \t]*", "【{N}】"),
     ("paren", r"(?m)^[ \t]*\([ \t]*(\d{1,3})[ \t]*\)[ \t]+", "({N})"),
     ("bare_dot", r"(?m)^[ \t]*(\d{1,3})[ \t]*\.[ \t]+", "{N}."),
@@ -376,14 +388,30 @@ class PDFTextExtractor:
                 break
         return last_page
 
-    @staticmethod
-    def _is_monotonic_sequence(numbers: List[int]) -> bool:
+    # 증가 비율 허용 오차: 연속 쌍의 이 비율 이상만 증가하면 통과.
+    # OCR/추출 과정에서 한두 문항의 번호가 오인식되어 일시적으로 역전되는
+    # 경우까지 정상 문서로 인정하기 위해 0.7 → 0.6으로 소폭 완화했다
+    # (예: 65,66,67,68 중 하나가 다른 숫자로 깨져도 남은 쌍들이 대부분
+    # 증가하면 통과).
+    _SEQUENCE_RATIO_THRESHOLD = 0.6
+
+    # 첫 번째 감지 번호의 상한. 원래 "3 이하"로 엄격히 제한했으나, 이는
+    # 문서가 항상 1번 문제부터 시작한다고 가정한 것이라 발췌본/후반부
+    # 챕터만 담은 PDF(예: 65~68번 문제만 포함된 sample(65-67).pdf)를
+    # 정상 문서인데도 튕겨냈다. 문제집 한 권의 문항 수가 이 값을 넘는
+    # 경우는 드물다고 보고 상한만 넉넉히 두어(조문 번호처럼 임의로 큰
+    # 숫자가 우연히 여럿 이어지는 경우를 배제) 안전판 성격은 유지한다.
+    _SEQUENCE_START_MAX = 500
+
+    @classmethod
+    def _is_monotonic_sequence(cls, numbers: List[int]) -> bool:
         """
         번호 목록이 "대체로 증가하는 수열"인지 판정 (오탐 패턴 배제용 휴리스틱).
 
         본문 중간에 우연히 나타난 숫자열(예: 조문 번호, 페이지 표기)이
-        문제 번호로 오인되는 것을 막기 위해, 연속 쌍의 70% 이상이
-        증가해야 하고 첫 번호가 3 이하로 시작해야 한다.
+        문제 번호로 오인되는 것을 막기 위해, 연속 쌍의
+        _SEQUENCE_RATIO_THRESHOLD(기본 60%) 이상이 증가해야 하고 첫 번호가
+        _SEQUENCE_START_MAX(기본 500) 이하로 시작해야 한다.
 
         Args:
             numbers: 감지된 번호 목록 (매칭 순서)
@@ -397,4 +425,4 @@ class PDFTextExtractor:
             1 for i in range(1, len(numbers)) if numbers[i] > numbers[i - 1]
         )
         ratio = increasing_pairs / (len(numbers) - 1)
-        return ratio >= 0.7 and numbers[0] <= 3
+        return ratio >= cls._SEQUENCE_RATIO_THRESHOLD and numbers[0] <= cls._SEQUENCE_START_MAX
