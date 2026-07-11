@@ -18,7 +18,7 @@ chunking:
 
 # CLI 설정 (v6 신설)
 cli:
-  claude_cmd: "claude"          # 또는 절대 경로
+  claude_cmd: "claude"          # 또는 절대 경로 (예: "C:\\Program Files\\Claude\\claude.exe")
   timeout_seconds: 300
   max_retries: 3
   backoff_seconds: [5, 15, 45]
@@ -31,6 +31,13 @@ cli:
   # stdin 전달 방식 선택 (Windows 호환성)
   stdin_method: "auto"          # auto | subprocess | powershell
   temp_prompt_cleanup: true     # 실행 후 임시 파일 자동 삭제
+
+  # Output 형식 설정
+  use_output_format_json: false # true면 claude --output-format json 사용 (지원 확인 후 활성화)
+
+  # 인코딩 설정
+  encoding: "utf-8"             # 항상 utf-8
+  errors_handler: "replace"     # utf-8 디코딩 실패 시: replace | ignore | strict
 
 # 텍스트 지표 (객관적 측정만)
 text_metrics:

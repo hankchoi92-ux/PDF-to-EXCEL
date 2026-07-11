@@ -1,0 +1,195 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "법률 용어 사전 - OCR 보정 및 검증용",
+    "last_updated": "2026-07-11",
+    "usage": "key=정확한용어, value=[오타패턴, 변형패턴, ...]"
+  },
+
+  "terms": {
+    "계약": {
+      "patterns": ["게약", "계약", "계락"],
+      "category": "민법총칙",
+      "frequency": "high",
+      "description": "당사자 간의 법률관계를 설정하는 합의"
+    },
+    "청약": {
+      "patterns": ["청악", "청약", "청약서"],
+      "category": "민법총칙",
+      "frequency": "high",
+      "description": "계약 체결을 위한 일방의 의사표시"
+    },
+    "승낙": {
+      "patterns": ["승락", "승낙", "승인"],
+      "category": "민법총칙",
+      "frequency": "high",
+      "description": "청약에 대한 상대방의 동의"
+    },
+    "물권": {
+      "patterns": ["뭴권", "물권", "물구권"],
+      "category": "물권법",
+      "frequency": "high",
+      "description": "물건을 직접 지배할 수 있는 권리"
+    },
+    "채권": {
+      "patterns": ["채김", "채권", "채완"],
+      "category": "채권법",
+      "frequency": "high",
+      "description": "특정 채무자에게 일정한 급부를 청구할 수 있는 권리"
+    },
+    "담보권": {
+      "patterns": ["담배권", "담보권", "담보"],
+      "category": "담보물권",
+      "frequency": "medium",
+      "description": "채권의 회수를 확보하기 위한 권리"
+    },
+    "저당권": {
+      "patterns": ["저당권", "저당"],
+      "category": "담보물권",
+      "frequency": "medium",
+      "description": "동산, 부동산을 담보로 설정한 권리"
+    },
+    "질권": {
+      "patterns": ["질권", "질"],
+      "category": "담보물권",
+      "frequency": "medium",
+      "description": "동산을 점유하여 설정하는 담보권"
+    },
+    "유언": {
+      "patterns": ["유언", "유원", "유안"],
+      "category": "상속법",
+      "frequency": "medium",
+      "description": "사람이 자신의 사망 후 재산 처리를 정하는 의사표시"
+    },
+    "상속": {
+      "patterns": ["상속", "상촉"],
+      "category": "상속법",
+      "frequency": "medium",
+      "description": "피상속인의 재산·채무가 상속인에게 승계되는 현상"
+    },
+    "대리": {
+      "patterns": ["대리", "대며"],
+      "category": "민법총칙",
+      "frequency": "medium",
+      "description": "본인의 의사표시를 대신 표현하는 행위"
+    },
+    "법인": {
+      "patterns": ["법인", "법임", "법운"],
+      "category": "민법총칙",
+      "frequency": "medium",
+      "description": "법률에 의해 인정되는 인공적 인격체"
+    },
+    "채무불이행": {
+      "patterns": ["채무불이행", "채무불이행", "채무미이행"],
+      "category": "채권법",
+      "frequency": "medium",
+      "description": "채무자가 시기를 정해 채무를 이행하지 않는 행위"
+    },
+    "불법행위": {
+      "patterns": ["불법행위", "불법행위"],
+      "category": "불법행위법",
+      "frequency": "medium",
+      "description": "타인에게 손해를 입히는 위법행위"
+    },
+    "손해배상": {
+      "patterns": ["손해배상", "손해배송"],
+      "category": "불법행위법",
+      "frequency": "medium",
+      "description": "손해를 입은 자가 가해자에게 청구하는 금전 지급"
+    },
+    "특수한물권": {
+      "patterns": ["특수한물권", "특수물권"],
+      "category": "물권법",
+      "frequency": "low",
+      "description": "점유권, 유치권, 질권, 저당권 등의 총칭"
+    },
+    "점유권": {
+      "patterns": ["점유권", "점유"],
+      "category": "특수물권",
+      "frequency": "low",
+      "description": "물건을 사실상 지배하는 상태"
+    },
+    "유치권": {
+      "patterns": ["유치권", "유치"],
+      "category": "특수물권",
+      "frequency": "low",
+      "description": "타인의 물건을 점유하면서 자신의 채권을 보장하는 권리"
+    },
+    "동산": {
+      "patterns": ["동산", "동삼"],
+      "category": "물권법",
+      "frequency": "low",
+      "description": "부동산이 아닌 모든 물건"
+    },
+    "부동산": {
+      "patterns": ["부동산", "부동성"],
+      "category": "물권법",
+      "frequency": "low",
+      "description": "토지와 토지에 정착된 건물·나무 등"
+    },
+    "선의": {
+      "patterns": ["선의", "선의"],
+      "category": "민법총칙",
+      "frequency": "low",
+      "description": "법률관계의 당사자가 사실을 알지 못하는 상태"
+    },
+    "악의": {
+      "patterns": ["악의", "악의"],
+      "category": "민법총칙",
+      "frequency": "low",
+      "description": "법률관계의 당사자가 사실을 알고 있는 상태"
+    },
+    "표현행위": {
+      "patterns": ["표현행위", "표현행위"],
+      "category": "민법총칙",
+      "frequency": "low",
+      "description": "의사표시의 표현 행위"
+    },
+    "도급": {
+      "patterns": ["도급", "도급"],
+      "category": "계약법",
+      "frequency": "low",
+      "description": "일정한 일의 완성을 약정하고 그에 대해 보수를 지급하는 계약"
+    },
+    "용역": {
+      "patterns": ["용역", "용익"],
+      "category": "계약법",
+      "frequency": "low",
+      "description": "노무를 제공하는 계약"
+    },
+    "임차": {
+      "patterns": ["임차", "임차"],
+      "category": "임차차용",
+      "frequency": "low",
+      "description": "타인의 물건을 빌려 사용하고 임차료를 지급하는 것"
+    },
+    "임대": {
+      "patterns": ["임대", "임대"],
+      "category": "임대차",
+      "frequency": "low",
+      "description": "자신의 물건을 타인에게 빌려주고 임차료를 받는 것"
+    }
+  },
+
+  "correction_rules": {
+    "obvious_typo": {
+      "enabled": true,
+      "description": "명백한 오타만 자동 수정 (사전 정확도: 99% 이상)"
+    },
+    "context_aware": {
+      "enabled": false,
+      "description": "문맥 분석 기반 수정 (False positive 위험으로 기본 비활성)",
+      "note": "필요 시 Claude 프롬프트 통해 수정"
+    },
+    "partial_match": {
+      "enabled": true,
+      "description": "부분 일치 감지 (예: '계약서' → '계약' 추출 후 [의심] 태그)"
+    }
+  },
+
+  "validation_settings": {
+    "confidence_threshold": 0.95,
+    "report_suspicious_terms": true,
+    "report_unknown_legal_terms": true
+  }
+}
