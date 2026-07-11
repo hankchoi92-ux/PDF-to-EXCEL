@@ -20,12 +20,19 @@ build/
 # Project-specific
 temp/*
 logs/*.log
+logs/raw/*
+logs/corrections/*
 responses/*.json
 chunks/texts/*.txt
 chunks/hints/*.json
 chunks/images/*.png
+chunks/chunk_manifest.json
 output/*.xlsx
 state/pipeline_state.json
+state/preflight.json
+input/*.pdf
+input/*.xlsx
+input/*.xls
 
 # OS
 .DS_Store
@@ -37,4 +44,7 @@ Thumbs.db
 !chunks/images/.gitkeep
 !responses/.gitkeep
 !logs/.gitkeep
+!logs/raw/.gitkeep
+!logs/corrections/.gitkeep
 !temp/.gitkeep
+!input/.gitkeep

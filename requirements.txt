@@ -13,7 +13,7 @@ pyyaml==6.0.1
 jsonschema==4.20.0
 
 # 텍스트 처리
-difflib-python==3.0.5
+# (difflib, re 등은 Python 표준 라이브러리 - 별도 설치 불필요)
 
 # Logging 및 유틸
 python-dotenv==1.0.0

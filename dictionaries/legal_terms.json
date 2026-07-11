@@ -14,13 +14,13 @@
       "description": "당사자 간의 법률관계를 설정하는 합의"
     },
     "청약": {
-      "patterns": ["청악", "청약", "청약서"],
+      "patterns": ["청악", "청약"],
       "category": "민법총칙",
       "frequency": "high",
       "description": "계약 체결을 위한 일방의 의사표시"
     },
     "승낙": {
-      "patterns": ["승락", "승낙", "승인"],
+      "patterns": ["승락", "승낙"],
       "category": "민법총칙",
       "frequency": "high",
       "description": "청약에 대한 상대방의 동의"
@@ -38,22 +38,24 @@
       "description": "특정 채무자에게 일정한 급부를 청구할 수 있는 권리"
     },
     "담보권": {
-      "patterns": ["담배권", "담보권", "담보"],
+      "patterns": ["담배권", "담보권"],
       "category": "담보물권",
       "frequency": "medium",
       "description": "채권의 회수를 확보하기 위한 권리"
     },
     "저당권": {
-      "patterns": ["저당권", "저당"],
+      "patterns": ["저당권"],
       "category": "담보물권",
       "frequency": "medium",
-      "description": "동산, 부동산을 담보로 설정한 권리"
+      "description": "동산, 부동산을 담보로 설정한 권리",
+      "note": "'저당'은 독립된 실제 법률 용어이므로 오타 패턴에서 제외"
     },
     "질권": {
-      "patterns": ["질권", "질"],
+      "patterns": ["질권"],
       "category": "담보물권",
       "frequency": "medium",
-      "description": "동산을 점유하여 설정하는 담보권"
+      "description": "동산을 점유하여 설정하는 담보권",
+      "note": "'질' 1글자는 '질문' 등 무관한 단어와 충돌 위험이 커서 오타 패턴에서 제외"
     },
     "유언": {
       "patterns": ["유언", "유원", "유안"],
@@ -80,7 +82,7 @@
       "description": "법률에 의해 인정되는 인공적 인격체"
     },
     "채무불이행": {
-      "patterns": ["채무불이행", "채무불이행", "채무미이행"],
+      "patterns": ["채무불이행", "채무미이행"],
       "category": "채권법",
       "frequency": "medium",
       "description": "채무자가 시기를 정해 채무를 이행하지 않는 행위"
@@ -98,22 +100,25 @@
       "description": "손해를 입은 자가 가해자에게 청구하는 금전 지급"
     },
     "특수한물권": {
-      "patterns": ["특수한물권", "특수물권"],
+      "patterns": ["특수한물권"],
       "category": "물권법",
       "frequency": "low",
-      "description": "점유권, 유치권, 질권, 저당권 등의 총칭"
+      "description": "점유권, 유치권, 질권, 저당권 등의 총칭",
+      "note": "'특수물권'은 실제로 통용되는 축약 표현이라 오타 패턴에서 제외"
     },
     "점유권": {
-      "patterns": ["점유권", "점유"],
+      "patterns": ["점유권"],
       "category": "특수물권",
       "frequency": "low",
-      "description": "물건을 사실상 지배하는 상태"
+      "description": "물건을 사실상 지배하는 상태",
+      "note": "'점유'는 독립된 실제 법률 용어이므로 오타 패턴에서 제외"
     },
     "유치권": {
-      "patterns": ["유치권", "유치"],
+      "patterns": ["유치권"],
       "category": "특수물권",
       "frequency": "low",
-      "description": "타인의 물건을 점유하면서 자신의 채권을 보장하는 권리"
+      "description": "타인의 물건을 점유하면서 자신의 채권을 보장하는 권리",
+      "note": "'유치'는 독립된 실제 단어(유치하다 등)이므로 오타 패턴에서 제외"
     },
     "동산": {
       "patterns": ["동산", "동삼"],
@@ -122,10 +127,11 @@
       "description": "부동산이 아닌 모든 물건"
     },
     "부동산": {
-      "patterns": ["부동산", "부동성"],
+      "patterns": ["부동산"],
       "category": "물권법",
       "frequency": "low",
-      "description": "토지와 토지에 정착된 건물·나무 등"
+      "description": "토지와 토지에 정착된 건물·나무 등",
+      "note": "'부동성'은 독립된 실제 단어(부동성의 원칙 등)이므로 오타 패턴에서 제외"
     },
     "선의": {
       "patterns": ["선의", "선의"],
@@ -152,10 +158,11 @@
       "description": "일정한 일의 완성을 약정하고 그에 대해 보수를 지급하는 계약"
     },
     "용역": {
-      "patterns": ["용역", "용익"],
+      "patterns": ["용역"],
       "category": "계약법",
       "frequency": "low",
-      "description": "노무를 제공하는 계약"
+      "description": "노무를 제공하는 계약",
+      "note": "'용익'은 독립된 실제 법률 용어(용익물권 등)이므로 오타 패턴에서 제외"
     },
     "임차": {
       "patterns": ["임차", "임차"],
