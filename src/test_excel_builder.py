@@ -98,34 +98,59 @@ def test_create_all_sheets():
     print(f"  PASS: 시트 구성 확인 {wb.sheetnames}")
 
     ws_main = wb["전체 문제"]
-    assert ws_main["A1"].value == "문제번호"
-    assert ws_main["H1"].value == "상태"
+    # 헤더: A 번호 | B NO. | C 문제 | D 선지번호 | E 선지 내용 | F (spacer) | G 정오(O/X) | H 해설 | I 신뢰도 | J 상태
+    assert ws_main["A1"].value == "번호"
+    assert ws_main["B1"].value == "NO."
+    assert ws_main["C1"].value == "문제"
+    assert not ws_main["F1"].value  # spacer 헤더는 공란(빈 문자열이 저장 시 None으로 정규화됨)
+    assert ws_main["G1"].value == "정오(O/X)"
+    assert ws_main["I1"].value == "신뢰도"
+    assert ws_main["J1"].value == "상태"
     total_option_rows = sum(len(q["options"]) for q in all_questions)
     assert ws_main.max_row == 1 + total_option_rows, (
         f"전체 문제 시트 행 수 불일치: {ws_main.max_row} != {1 + total_option_rows}"
     )
     assert ws_main.freeze_panes == "A2"
     assert ws_main.auto_filter.ref is not None
-    print(f"  PASS: 전체 문제 시트 - 헤더/{total_option_rows}개 선지 행/틀고정/필터 확인")
+    print(f"  PASS: 전체 문제 시트 - 헤더(A~J)/{total_option_rows}개 선지 행/틀고정/필터 확인")
 
-    assert ws_main["B2"].value == "다음 중 계약의 성립 요건이 아닌 것은?"
-    assert ws_main["B3"].value == "동일"  # 2번째 선지부터 "동일"
-    assert ws_main["E4"].value == "O"     # 정답 선지는 O
-    assert ws_main["E2"].value == "X"
-    print("  PASS: '동일' 처리 및 정오(O/X) 값 확인")
+    assert not ws_main["A2"].value  # 번호 컬럼은 수동 작업용 공란(빈 문자열→저장 시 None)
+    assert ws_main["B2"].value == 1   # NO.(문제번호)
+    assert ws_main["C2"].value == "다음 중 계약의 성립 요건이 아닌 것은?"
+    assert ws_main["C3"].value == "동일"  # 2번째 선지부터 "동일"
+    assert ws_main["F2"].value is None    # spacer는 항상 공란
+    assert ws_main["G4"].value == "O"     # 정답 선지는 O
+    assert ws_main["G2"].value == "X"
+    assert ws_main["I2"].value == 1.0     # 신뢰도
+    assert ws_main["J2"].value == "AUTO"  # 상태
+    print("  PASS: 번호(공란)/NO./'동일' 처리/spacer/정오(O/X)/신뢰도/상태 값 확인")
 
     ws_review = wb["검토 필요"]
-    assert ws_review["A1"].value == "문제번호"
-    assert ws_review["I1"].value == "수동 확인"
+    assert ws_review["A1"].value == "번호"
+    assert ws_review["K1"].value == "수동 확인"
     review_option_rows = sum(
         len(q["options"]) for q in all_questions if q["status"] == "HUMAN_REVIEW"
     )
     assert ws_review.max_row == 1 + review_option_rows
-    assert ws_review["I2"].value == "미확인"
+    assert ws_review["K2"].value == "미확인"
     dv_list = list(ws_review.data_validations.dataValidation)
     assert len(dv_list) == 1
     assert "O,X" in dv_list[0].formula1
-    print(f"  PASS: 검토 필요 시트 - {review_option_rows}개 행, 드롭다운 검증 컬럼 확인")
+    print(f"  PASS: 검토 필요 시트 - {review_option_rows}개 행, 드롭다운 검증 컬럼(K) 확인")
+
+    # 서식: 폰트(마루 부리 중간)/전 셀 테두리(thin) 적용 확인 (색상 값은 검증 대상 아님)
+    header_cell = ws_main["C1"]
+    assert header_cell.font.name == "마루 부리 중간"
+    assert header_cell.font.bold is True
+    assert header_cell.border.left.style == "thin"
+    data_cell = ws_main["C2"]
+    assert data_cell.font.name == "마루 부리 중간"
+    assert data_cell.border.top.style == "thin"
+    assert data_cell.alignment.vertical == "center"
+    assert data_cell.alignment.wrap_text is True
+    short_cell = ws_main["B2"]
+    assert short_cell.alignment.horizontal == "center"
+    print("  PASS: 폰트(마루 부리 중간)/테두리(thin)/정렬(wrap+center) 서식 확인")
 
     ws_stats = wb["변환 통계"]
     stats_values = [row[0].value for row in ws_stats.iter_rows(min_row=2, max_col=1)]

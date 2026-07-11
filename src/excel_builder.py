@@ -2,7 +2,8 @@
 Excel 생성 (Phase 4)
 
 최종 Excel 파일 생성 (3개 시트: 전체 문제 / 검토 필요 / 변환 통계).
-스타일, 필터, 조건부 서식 적용.
+서식은 사용자가 제공한 수동 작업 결과물(sample/sample.xlsx)의 레이아웃을
+기준으로 한다 (색상 값 자체는 이 파일의 관심사가 아니며 기존 값을 유지).
 
 입력 계약: all_questions는 auto_pipeline._phase_3_validate()가 만드는
 "평탄화된" 문제 리스트로, 각 원소는 다음 키를 갖는다.
@@ -15,6 +16,14 @@ Excel 생성 (Phase 4)
     }
 선지 1개당 1행으로 출력하므로, 시트의 실제 행 수는 문제 수가 아니라
 전체 선지 수와 같다.
+
+컬럼 레이아웃 (A~J):
+    A 번호(수동 작업용 빈 컬럼) | B NO.(문제번호) | C 문제 | D 선지번호 |
+    E 선지 내용 | F (spacer, 항상 공란) | G 정오(O/X) | H 해설 |
+    I 신뢰도 | J 상태
+A/F는 sample.xlsx의 레이아웃을 재현하기 위한 컬럼으로 값이 없거나(A)
+항상 공란(F)이며, I/J(신뢰도·상태)는 sample.xlsx에는 없지만 Group 3
+검증 파이프라인의 산출물을 보존하기 위해 유지한다.
 """
 
 import logging
@@ -27,20 +36,35 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-# "전체 문제" / "검토 필요" 공통 컬럼 정의
-_COLUMNS = ["문제번호", "문제", "선지번호", "선지내용", "정오", "해설", "신뢰도", "상태"]
+# "전체 문제" / "검토 필요" 공통 컬럼 정의 (sample.xlsx 레이아웃 반영)
+_COLUMNS = ["번호", "NO.", "문제", "선지번호", "선지 내용", "", "정오(O/X)", "해설", "신뢰도", "상태"]
 _REVIEW_EXTRA_COLUMN = "수동 확인"
 
-_CONFIDENCE_COL = 7   # G: 신뢰도
-_STATUS_COL = 8       # H: 상태
-_QUESTION_TEXT_COL = 2  # B: 문제
-_CORRECT_COL = 5      # E: 정오
+_SERIAL_COL = 1          # A: 번호 (수동 작업용 공란 컬럼)
+_QID_COL = 2              # B: NO.(문제번호)
+_QUESTION_TEXT_COL = 3    # C: 문제
+_OPTION_NUM_COL = 4       # D: 선지번호
+_OPTION_TEXT_COL = 5      # E: 선지 내용
+_SPACER_COL = 6           # F: spacer (항상 공란)
+_CORRECT_COL = 7          # G: 정오(O/X)
+_EXPLANATION_COL = 8      # H: 해설
+_CONFIDENCE_COL = 9       # I: 신뢰도
+_STATUS_COL = 10          # J: 상태
+
+_SAMPLE_FONT_NAME = "마루 부리 중간"
+_FONT_SIZE = 11
 
 _HUMAN_REVIEW_THRESHOLD = 0.95
 _LOW_CONFIDENCE_THRESHOLD = 0.7
 
-_MAX_COLUMN_WIDTH = 60
-_MIN_COLUMN_WIDTH = 8
+# sample.xlsx의 고정폭에 가깝게 컬럼별 상한을 둔다 (컬럼 성격에 따라 다른 상한).
+_COLUMN_WIDTH_CAP: Dict[int, int] = {
+    _SERIAL_COL: 6, _QID_COL: 8, _QUESTION_TEXT_COL: 60,
+    _OPTION_NUM_COL: 12, _OPTION_TEXT_COL: 60, _SPACER_COL: 8,
+    _CORRECT_COL: 12, _EXPLANATION_COL: 70, _CONFIDENCE_COL: 10, _STATUS_COL: 14,
+}
+_DEFAULT_COLUMN_WIDTH_CAP = 60
+_MIN_COLUMN_WIDTH = 6
 
 
 class ExcelBuilder:
@@ -73,15 +97,27 @@ class ExcelBuilder:
                     ...
                 }
         """
+        thin = Side(style="thin")
+        full_border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
         return {
             "header": {
-                "font": Font(bold=True, color="FFFFFF"),
+                "font": Font(name=_SAMPLE_FONT_NAME, size=_FONT_SIZE, bold=True, color="FFFFFF"),
                 "fill": PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid"),
                 "alignment": Alignment(horizontal="center", vertical="center", wrap_text=True),
+                "border": full_border,
             },
-            "wrap": {
-                "alignment": Alignment(vertical="top", wrap_text=True),
+            # 문제/선지내용/해설: 좌측 정렬(기본) + 세로 중앙 + 줄바꿈 (sample.xlsx 동일)
+            "wrap_left": {
+                "alignment": Alignment(horizontal=None, vertical="center", wrap_text=True),
             },
+            # 번호/NO./선지번호/정오/신뢰도/상태: 가로+세로 중앙 정렬
+            "center_short": {
+                "alignment": Alignment(horizontal="center", vertical="center", wrap_text=True),
+            },
+            "border": full_border,
+            "default_font": Font(name=_SAMPLE_FONT_NAME, size=_FONT_SIZE),
+            # 이하 색상 관련 스타일 (기존 값 유지 — 색상 자체는 분석/변경 대상 아님)
             "low_confidence": {
                 "fill": PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid"),  # 노란색
             },
@@ -90,20 +126,16 @@ class ExcelBuilder:
             },
             "correct_o": {
                 "fill": PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid"),  # 연두
-                "font": Font(color="006100"),
+                "font": Font(name=_SAMPLE_FONT_NAME, size=_FONT_SIZE, color="006100"),
             },
             "correct_x": {
                 "fill": PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid"),  # 연빨강
-                "font": Font(color="9C0006"),
+                "font": Font(name=_SAMPLE_FONT_NAME, size=_FONT_SIZE, color="9C0006"),
             },
             "duplicate_gray": {
                 "fill": PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid"),
-                "font": Font(color="808080", italic=True),
+                "font": Font(name=_SAMPLE_FONT_NAME, size=_FONT_SIZE, color="808080"),
             },
-            "border": Border(
-                left=Side(style="thin", color="D9D9D9"), right=Side(style="thin", color="D9D9D9"),
-                top=Side(style="thin", color="D9D9D9"), bottom=Side(style="thin", color="D9D9D9"),
-            ),
         }
 
     # ------------------------------------------------------------------
@@ -167,7 +199,7 @@ class ExcelBuilder:
         """
         "전체 문제" 시트 생성.
 
-        컬럼: 문제번호 | 문제 | 선지번호 | 선지내용 | 정오 | 해설 | 신뢰도 | 상태
+        컬럼: 번호 | NO. | 문제 | 선지번호 | 선지 내용 | (spacer) | 정오(O/X) | 해설 | 신뢰도 | 상태
 
         기능:
         - 틀 고정 (1행)
@@ -186,12 +218,12 @@ class ExcelBuilder:
 
         last_row = max(row - 1, 1)
         self._apply_header_style(ws, 1)
-        self._apply_conditional_formatting(ws, f"A1:H{last_row}")
+        self._apply_conditional_formatting(ws, f"A1:J{last_row}")
         self._auto_adjust_column_width(ws)
 
         ws.freeze_panes = "A2"
         if last_row >= 1:
-            ws.auto_filter.ref = f"A1:H{last_row}"
+            ws.auto_filter.ref = f"A1:J{last_row}"
 
     def create_review_sheet(
         self,
@@ -216,12 +248,13 @@ class ExcelBuilder:
 
         last_row = max(row - 1, 1)
         self._apply_header_style(ws, 1)
-        self._apply_conditional_formatting(ws, f"A1:H{last_row}")
+        self._apply_conditional_formatting(ws, f"A1:J{last_row}")
         self._auto_adjust_column_width(ws)
 
         ws.freeze_panes = "A2"
+        extra_col_letter = get_column_letter(len(columns))
         if last_row >= 1:
-            ws.auto_filter.ref = f"A1:I{last_row}"
+            ws.auto_filter.ref = f"A1:{extra_col_letter}{last_row}"
 
         if last_row >= 2:
             dv = DataValidation(
@@ -230,12 +263,14 @@ class ExcelBuilder:
             )
             dv.error = "미확인/O/X 중 하나를 선택하세요."
             dv.errorTitle = "잘못된 입력"
-            col_letter = get_column_letter(len(columns))
-            dv_range = f"{col_letter}2:{col_letter}{last_row}"
+            dv_range = f"{extra_col_letter}2:{extra_col_letter}{last_row}"
             dv.add(dv_range)
             ws.add_data_validation(dv)
             for r in range(2, last_row + 1):
-                ws.cell(row=r, column=len(columns), value="미확인")
+                cell = ws.cell(row=r, column=len(columns), value="미확인")
+                cell.font = self.styles["default_font"]
+                cell.border = self.styles["border"]
+                cell.alignment = self.styles["center_short"]["alignment"]
 
     def create_statistics_sheet(
         self,
@@ -343,19 +378,33 @@ class ExcelBuilder:
         for i, opt in enumerate(options):
             display_text = qtext if i == 0 else "동일"
             correct_symbol = "O" if opt.get("correct") else "X"
-            ws.append([
-                qid, display_text, opt.get("num", ""), opt.get("text", ""),
-                correct_symbol, opt.get("explanation", ""), round(float(confidence), 3), status,
-            ])
-            cell_b = ws.cell(row=row, column=_QUESTION_TEXT_COL)
-            cell_d = ws.cell(row=row, column=4)
-            cell_f = ws.cell(row=row, column=6)
-            cell_b.alignment = self.styles["wrap"]["alignment"]
-            cell_d.alignment = self.styles["wrap"]["alignment"]
-            cell_f.alignment = self.styles["wrap"]["alignment"]
+            values = [
+                "",                                  # A: 번호 (수동 작업용 공란)
+                qid,                                  # B: NO.
+                display_text,                          # C: 문제
+                opt.get("num", ""),                     # D: 선지번호
+                opt.get("text", ""),                    # E: 선지 내용
+                None,                                    # F: spacer (항상 공란)
+                correct_symbol,                          # G: 정오(O/X)
+                opt.get("explanation", ""),               # H: 해설
+                round(float(confidence), 3),               # I: 신뢰도
+                status,                                     # J: 상태
+            ]
+            ws.append(values)
+
+            for col_idx in range(1, len(values) + 1):
+                cell = ws.cell(row=row, column=col_idx)
+                cell.font = self.styles["default_font"]
+                cell.border = self.styles["border"]
+                if col_idx in (_QUESTION_TEXT_COL, _OPTION_TEXT_COL, _EXPLANATION_COL):
+                    cell.alignment = self.styles["wrap_left"]["alignment"]
+                else:
+                    cell.alignment = self.styles["center_short"]["alignment"]
+
             if i > 0:
-                cell_b.fill = self.styles["duplicate_gray"]["fill"]
-                cell_b.font = self.styles["duplicate_gray"]["font"]
+                cell_c = ws.cell(row=row, column=_QUESTION_TEXT_COL)
+                cell_c.fill = self.styles["duplicate_gray"]["fill"]
+                cell_c.font = self.styles["duplicate_gray"]["font"]
             row += 1
         return row
 
@@ -371,6 +420,7 @@ class ExcelBuilder:
             cell.font = self.styles["header"]["font"]
             cell.fill = self.styles["header"]["fill"]
             cell.alignment = self.styles["header"]["alignment"]
+            cell.border = self.styles["header"]["border"]
 
     def _apply_conditional_formatting(self, ws, data_range: str) -> None:
         """
@@ -378,7 +428,7 @@ class ExcelBuilder:
 
         Args:
             ws: Worksheet
-            data_range: 데이터 범위 (예: "A1:H100"), 헤더 행 포함해서 전달해도
+            data_range: 데이터 범위 (예: "A1:J100"), 헤더 행 포함해서 전달해도
                 무방 (openpyxl은 규칙 적용 시 헤더 값도 평가하지만 문자열
                 비교/숫자 비교 조건에 해당하지 않으므로 영향 없음)
         """
@@ -422,7 +472,7 @@ class ExcelBuilder:
         )
 
     def _parse_range(self, cell_range: str) -> Tuple[Tuple[int, int], Tuple[int, int]]:
-        """"A1:H100" 형식 범위를 ((시작열,시작행),(끝열,끝행))로 파싱."""
+        """"A1:J100" 형식 범위를 ((시작열,시작행),(끝열,끝행))로 파싱."""
         from openpyxl.utils.cell import range_boundaries
         min_col, min_row, max_col, max_row = range_boundaries(cell_range)
         return (min_col, min_row), (max_col, max_row)
@@ -432,7 +482,8 @@ class ExcelBuilder:
         열 너비 자동 조정.
 
         각 열에서 가장 긴 값의 표시 길이(개행 기준 최대 줄 길이)를 측정해
-        너비를 설정한다. 지나치게 넓어지는 것을 막기 위해 상한을 둔다.
+        너비를 설정한다. 컬럼 성격별 상한(_COLUMN_WIDTH_CAP)을 적용해
+        지나치게 넓어지는 것을 막는다 (sample.xlsx 고정폭에 가깝게).
 
         Args:
             ws: Worksheet
@@ -447,8 +498,9 @@ class ExcelBuilder:
                 widths[cell.column] = max(widths.get(cell.column, _MIN_COLUMN_WIDTH), length)
 
         for col_idx, width in widths.items():
+            cap = _COLUMN_WIDTH_CAP.get(col_idx, _DEFAULT_COLUMN_WIDTH_CAP)
             ws.column_dimensions[get_column_letter(col_idx)].width = min(
-                max(width + 2, _MIN_COLUMN_WIDTH), _MAX_COLUMN_WIDTH
+                max(width + 2, _MIN_COLUMN_WIDTH), cap
             )
 
     def _derive_statistics(self, all_questions: List[Dict[str, Any]]) -> Dict[str, Any]:
