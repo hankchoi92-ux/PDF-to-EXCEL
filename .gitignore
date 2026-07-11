@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project-specific
+temp/*
+logs/*.log
+responses/*.json
+chunks/texts/*.txt
+chunks/hints/*.json
+chunks/images/*.png
+output/*.xlsx
+state/pipeline_state.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keep directory structure even if empty
+!chunks/texts/.gitkeep
+!chunks/hints/.gitkeep
+!chunks/images/.gitkeep
+!responses/.gitkeep
+!logs/.gitkeep
+!temp/.gitkeep

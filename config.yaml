@@ -1,0 +1,99 @@
+# 법학 문제집 PDF → Excel 변환 설정 (v6)
+
+project:
+  name: "법학 문제집 PDF → Excel 변환 자동화"
+  version: "6.0.0"
+
+# PDF 처리
+pdf:
+  extract_method: "pymupdf"  # pymupdf | ocr
+  reference_image_dpi: 100
+  max_retries: 3
+
+# 청크 설정
+chunking:
+  max_tokens_per_chunk: 3500
+  token_per_char_ratio: 0.5  # 한국어 보수적 추정: 1토큰 ≈ 2자
+  question_boundary_aware: true  # 청크가 문제 경계를 넘지 않게
+
+# CLI 설정 (v6 신설)
+cli:
+  claude_cmd: "claude"          # 또는 절대 경로
+  timeout_seconds: 300
+  max_retries: 3
+  backoff_seconds: [5, 15, 45]
+  allowed_tools: ["Read"]       # 참고 이미지 전송 시 필요
+  inter_chunk_delay_seconds: 3
+  max_parallel: 1               # v6에서는 순차 고정 (병렬화는 v7)
+  on_limit: "wait"              # wait | stop (사용량 한도 도달 시)
+  limit_recheck_minutes: 30
+
+  # stdin 전달 방식 선택 (Windows 호환성)
+  stdin_method: "auto"          # auto | subprocess | powershell
+  temp_prompt_cleanup: true     # 실행 후 임시 파일 자동 삭제
+
+# 텍스트 지표 (객관적 측정만)
+text_metrics:
+  broken_char_threshold: 0.05   # 깨진 문자 비율 임계값
+  excessive_space_threshold: 0.1
+  avg_line_length_normal: 40
+
+# 로컬 보정 (사전 기반 1차 보정)
+local_correction:
+  dictionary_path: "dictionaries/legal_terms.json"
+  auto_correct_obvious: true    # 명백한 오타만 (확실하지 않으면 [의심])
+
+# 검증 설정
+validation:
+  structure_check: true
+  diff_check: true
+  term_check: true
+  confidence_threshold: 0.95    # 자동 확정 기준
+
+# 신뢰도 가중치
+confidence:
+  structure_error_weight: -0.3
+  diff_missing_weight: -0.4
+  term_mismatch_weight: -0.1
+  empty_field_weight: -0.2
+  auto_fixable_credit: 0.05
+
+# Excel 생성
+excel:
+  freeze_header_rows: 1
+  auto_filter: true
+  conditional_formatting: true
+  sheets:
+    - name: "전체 문제"
+      include_columns: [문제번호, 문제, 선지번호, 선지내용, 정오, 해설, 신뢰도, 상태]
+    - name: "검토 필요"
+      filter_confidence: "<0.95"
+    - name: "단원별"
+      grouping: "keyword"  # 또는 range
+    - name: "변환 통계"
+      metrics: [total_count, auto_confirmed, human_review, avg_confidence, error_breakdown]
+
+# 상태 관리
+state:
+  state_file: "state/pipeline_state.json"
+  auto_resume: true            # 중단 후 재시작 시 이어서 처리
+  save_interval: 1             # 청크마다 상태 저장
+
+# 로깅
+logging:
+  level: "INFO"                 # DEBUG | INFO | WARNING | ERROR
+  log_file: "logs/conversion.log"
+  raw_bytes_dir: "logs/raw"     # 인코딩 실패 시 원시 데이터 보존
+  include_duration: true
+  include_retry_history: true
+
+# 프롬프트 템플릿
+prompt:
+  template_file: "prompts/prompt_template.md"
+  include_hint_json: true       # 로컬 힌트 구조 정보 포함
+  include_text_metrics: true    # 텍스트 상태 정보 포함
+
+# 추가 옵션
+debug:
+  keep_intermediate_files: false  # true면 chunks/, responses/ 유지 (디버깅용)
+  preflight_only: false           # true면 Phase 0만 실행 후 종료

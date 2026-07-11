@@ -1,0 +1,26 @@
+# 법학 문제집 PDF → Excel 변환 자동화 (v6)
+
+# PDF 처리
+PyMuPDF==1.24.1
+
+# Excel 생성
+openpyxl==3.11.5
+
+# 설정 파일 처리
+pyyaml==6.0.1
+
+# JSON 검증
+jsonschema==4.20.0
+
+# 텍스트 처리
+difflib-python==3.0.5
+
+# Logging 및 유틸
+python-dotenv==1.0.0
+
+# (선택) 진행률 표시
+tqdm==4.66.1
+
+# (선택) CLI 테스트
+pytest==7.4.3
+pytest-cov==4.1.0
