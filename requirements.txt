@@ -3,6 +3,15 @@
 # PDF 처리
 PyMuPDF==1.24.1
 
+# OCR 재추출 (스캔 PDF의 임베디드 텍스트 레이어 품질이 낮을 때 사용,
+# config.yaml의 pdf.extract_method: auto/ocr 에서 필요.
+# 시스템에 Tesseract OCR 엔진 + 한국어 언어팩도 별도 설치 필요:
+#   Windows: https://github.com/UB-Mannheim/tesseract/wiki (Korean 언어팩 체크)
+#   Mac: brew install tesseract tesseract-lang
+#   Linux: apt install tesseract-ocr tesseract-ocr-kor
+pytesseract==0.3.10
+Pillow==10.4.0
+
 # Excel 생성
 openpyxl==3.11.5
 

@@ -6,7 +6,11 @@ project:
 
 # PDF 처리
 pdf:
-  extract_method: "pymupdf"  # pymupdf | ocr
+  extract_method: "auto"  # pymupdf(임베디드 텍스트만) | ocr(항상 재OCR) | auto(임베디드 텍스트의 문제 번호가 듬성듬성하면 자동으로 OCR 재추출)
+  ocr_fallback_min_ratio: 0.8  # auto 모드: (감지된 문제 수 / 번호 범위) 가 이 값 미만이면 OCR 재추출 시도
+  ocr_dpi: 300                 # OCR 재추출 시 페이지 렌더링 해상도
+  ocr_lang: "kor"              # Tesseract 언어팩 (한국어)
+  ocr_tesseract_cmd: ""        # Tesseract 실행 파일 경로 (PATH에 없을 때만 지정, 예: "C:\\Program Files\\Tesseract-OCR\\tesseract.exe")
   reference_image_dpi: 100
   max_retries: 3
 

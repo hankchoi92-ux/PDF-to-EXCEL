@@ -220,11 +220,32 @@ def test_extract_json_safely_utility():
     print(f"  PASS: 펜스 없는 응답에서도 첫 {{ ~ 마지막 }} 추출 확인: {extracted2!r}")
 
 
+def test_patterns_look_sparse():
+    """OCR 재추출 트리거 판정(_patterns_look_sparse)이 기대대로 동작하는지 확인."""
+    def _pat(qid):
+        return {"question_id": qid}
+
+    # 실측 사례(물권기출 문1-문19.pdf): 1~19 범위인데 11개만 감지 (11/19 ≈ 0.58 < 0.8) → 듬성듬성
+    sparse = [_pat(n) for n in [1, 6, 7, 9, 10, 11, 12, 14, 15, 17, 19]]
+    assert AutoPipeline._patterns_look_sparse(sparse, 0.8) is True
+    print("  PASS: 1~19 범위 중 11개만 감지된 경우 OCR 재추출 대상으로 판정")
+
+    # 빈틈없이 연속된 경우 → 정상
+    dense = [_pat(n) for n in range(1, 5)]
+    assert AutoPipeline._patterns_look_sparse(dense, 0.8) is False
+    print("  PASS: 연속된 문제 번호는 OCR 재추출 불필요로 판정")
+
+    # 패턴을 아예 못 찾은 경우 → 무조건 재추출 검토 대상
+    assert AutoPipeline._patterns_look_sparse([], 0.8) is True
+    print("  PASS: 패턴 미검출 시 OCR 재추출 대상으로 판정")
+
+
 def main():
     tests = [
         ("Phase 0~4 통합 + Rate Limit 재개 루프", test_full_pipeline_with_rate_limit_recovery),
         ("프리플라이트 실패 → RuntimeError", test_preflight_failure_raises),
         ("JSON 안전 추출 유틸리티", test_extract_json_safely_utility),
+        ("OCR 재추출 트리거 판정(_patterns_look_sparse)", test_patterns_look_sparse),
     ]
     failed = []
     for name, fn in tests:

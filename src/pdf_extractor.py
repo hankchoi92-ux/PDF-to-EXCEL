@@ -8,6 +8,7 @@ PDF에서 텍스트, 좌표, 레이아웃 정보 추출.
 하위 단계를 import하지 않는다 (전처리 → 클라이언트 → 검증 → 생성).
 """
 
+import io
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -187,6 +188,88 @@ class PDFTextExtractor:
 
         self._blocks_cache = blocks_out
         self._full_text_cache = full_text
+        return blocks_out
+
+    def extract_text_with_positions_ocr(
+        self,
+        dpi: int = 300,
+        lang: str = "kor",
+        tesseract_cmd: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Tesseract OCR 기반 재추출.
+
+        스캔 이미지 PDF에 이미 박혀 있는 텍스트 레이어(embedded OCR)의 품질이
+        낮아 "문N" 같은 문제 번호 마커가 다수 누락되는 경우의 대안 경로.
+        각 페이지를 고해상도 이미지로 렌더링한 뒤 Tesseract로 새로 OCR한다.
+        (Pillow/pytesseract는 지연 import: 이 메서드를 호출하지 않으면 두
+        패키지가 없어도 나머지 pymupdf 기반 추출은 정상 동작한다.)
+
+        extract_text_with_positions()과 달리 캐시하지 않는다(호출자가
+        기존 추출 결과와 비교해 선택적으로 사용하는 대안 경로이므로).
+
+        Args:
+            dpi: 렌더링 해상도 (기본 300 — 100dpi 참고용 이미지보다 고해상도 필요)
+            lang: Tesseract 언어 코드 (기본 "kor")
+            tesseract_cmd: Tesseract 실행 파일 경로 (Windows 등 PATH에 없을 때 지정)
+
+        Returns:
+            List[Dict]: extract_text_with_positions()과 동일한 구조.
+                bbox/font_size는 OCR에서 얻을 수 없어 더미 값(0)으로 채운다.
+
+        Raises:
+            RuntimeError: pytesseract/Pillow 미설치 또는 Tesseract 실행 실패
+            PDFEmptyError: OCR로도 텍스트를 전혀 추출하지 못함
+        """
+        try:
+            import pytesseract
+            from PIL import Image
+        except ImportError as e:
+            raise RuntimeError(
+                "OCR 재추출에는 pytesseract, Pillow와 시스템 Tesseract OCR 엔진이 "
+                "필요합니다. `pip install pytesseract pillow` 실행 후, Tesseract 본체와 "
+                "한국어 언어팩을 설치해주세요 "
+                "(Windows: https://github.com/UB-Mannheim/tesseract/wiki, "
+                "설치 시 'Additional language data' 중 Korean 체크)."
+            ) from e
+
+        if tesseract_cmd:
+            pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+
+        blocks_out: List[Dict[str, Any]] = []
+        block_id = 0
+        for page_index in range(self.doc.page_count):
+            page = self.doc[page_index]
+            pix = page.get_pixmap(dpi=dpi)
+            image = Image.open(io.BytesIO(pix.tobytes("png")))
+            try:
+                text = pytesseract.image_to_string(image, lang=lang).strip()
+            except Exception as e:
+                raise RuntimeError(
+                    f"Tesseract OCR 실행 실패 (페이지 {page_index}): {e}. "
+                    f"Tesseract 실행 파일 경로와 언어팩('{lang}') 설치 여부를 확인하세요."
+                ) from e
+
+            if not text:
+                continue
+            blocks_out.append({
+                "page": page_index,
+                "text": text,
+                "bbox": (0.0, 0.0, 0.0, 0.0),
+                "font_size": 0.0,
+                "block_id": block_id,
+            })
+            block_id += 1
+
+        if not blocks_out:
+            raise PDFEmptyError(
+                f"OCR로도 텍스트를 추출하지 못했습니다: {self.pdf_path}"
+            )
+
+        _full_text, ranges = self._join_blocks(blocks_out)
+        for (start, end, _page), block in zip(ranges, blocks_out):
+            block["char_start"] = start
+            block["char_end"] = end
         return blocks_out
 
     def extract_full_text(self) -> str:

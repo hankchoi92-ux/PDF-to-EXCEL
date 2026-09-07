@@ -166,6 +166,33 @@ class AutoPipeline:
         self.state_manager.transition("global", PipelineState.PREPARED)
         return True
 
+    @staticmethod
+    def _patterns_look_sparse(patterns: List[Dict[str, Any]], min_ratio: float) -> bool:
+        """
+        감지된 문제 번호가 "듬성듬성"한지(중간에 많이 빠졌는지) 판정.
+
+        스캔 PDF에 이미 박혀 있는 저품질 OCR 텍스트 레이어는 문제 번호
+        일부를 다른 문자로 오인식해 통째로 놓치는 경우가 있다. 이 경우
+        detect_question_patterns()가 찾아낸 번호들이 최소~최대 범위에 비해
+        실제 매칭 개수가 적다(예: 1~19 범위인데 11개만 매칭). 참문서 전체
+        문제 수를 미리 알 수 없으므로, 감지된 번호 자체의 최소/최대 범위
+        대비 매칭 비율로 대신 판정한다.
+
+        Args:
+            patterns: detect_question_patterns() 결과
+            min_ratio: 이 비율 미만이면 "듬성듬성"으로 판정 (OCR 재추출 검토 대상)
+
+        Returns:
+            bool: OCR 재추출을 시도해볼 가치가 있으면 True
+        """
+        if not patterns:
+            return True
+        numbers = [p["question_id"] for p in patterns]
+        span = max(numbers) - min(numbers) + 1
+        if span <= 0:
+            return False
+        return (len(patterns) / span) < min_ratio
+
     def _phase_1_preprocess(self) -> List[Dict[str, Any]]:
         """
         Phase 1: PDF 전처리 + 동적 청킹.
@@ -189,11 +216,41 @@ class AutoPipeline:
         """
         self.logger.info("[Phase 1] PDF 전처리 + 동적 청킹 시작")
 
+        pdf_cfg = self.config.get("pdf", {})
+        extract_method = pdf_cfg.get("extract_method", "pymupdf")
+
         with PDFTextExtractor(self.pdf_path) as extractor:
             blocks = extractor.extract_text_with_positions()
-            full_text = extractor.extract_full_text()
             patterns = extractor.detect_question_patterns(blocks)
+            used_ocr = False
+
+            if extract_method in ("ocr", "auto"):
+                should_ocr = extract_method == "ocr" or self._patterns_look_sparse(
+                    patterns, float(pdf_cfg.get("ocr_fallback_min_ratio", 0.8))
+                )
+                if should_ocr:
+                    try:
+                        ocr_blocks = extractor.extract_text_with_positions_ocr(
+                            dpi=int(pdf_cfg.get("ocr_dpi", 300)),
+                            lang=pdf_cfg.get("ocr_lang", "kor"),
+                            tesseract_cmd=pdf_cfg.get("ocr_tesseract_cmd") or None,
+                        )
+                        ocr_patterns = extractor.detect_question_patterns(ocr_blocks)
+                        if extract_method == "ocr" or len(ocr_patterns) > len(patterns):
+                            self.logger.info(
+                                "[Phase 1] OCR 재추출 채택: 문제 번호 %d개 → %d개",
+                                len(patterns), len(ocr_patterns),
+                            )
+                            blocks, patterns, used_ocr = ocr_blocks, ocr_patterns, True
+                    except RuntimeError as e:
+                        self.logger.warning("[Phase 1] OCR 재추출 실패, 기존 추출 결과 사용: %s", e)
+
+            full_text, _ranges = PDFTextExtractor._join_blocks(blocks)
             option_symbols = extractor.detect_option_symbols(blocks)
+
+        self.logger.info(
+            "[Phase 1] 텍스트 추출 방식: %s", "OCR 재추출" if used_ocr else "PDF 임베디드 텍스트"
+        )
         self.state_manager.transition("global", PipelineState.TEXT_EXTRACTED)
 
         chunk_cfg = self.config.get("chunking", {})
