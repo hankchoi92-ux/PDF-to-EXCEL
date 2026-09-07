@@ -28,6 +28,8 @@ chunks/hints/*.json
 chunks/images/*.png
 chunks/chunk_manifest.json
 output/*.xlsx
+output/_dryrun_test/
+output/_dryrun_test_pipeline/
 state/pipeline_state.json
 state/preflight.json
 input/*.pdf
