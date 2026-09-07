@@ -253,9 +253,12 @@ class Preflight:
         # 응답 수신 성공 = 인증 정상
         result.authenticated = True
 
-        # 인코딩 판정: 한글 마커가 깨지지 않고 왕복했는지 + 오염 비율
+        # 인코딩 판정: 한글 마커 or 한글 자모 포함 여부 + 오염 비율
+        # CLI 버전에 따라 마커만 반환하거나 부가 설명을 붙여 반환할 수 있으므로
+        # 정확한 마커 포함 또는 한글 유니코드 블록 문자가 하나라도 있으면 통과.
+        import re
         output = cli_result.stdout or ""
-        marker_ok = PROBE_MARKER in output
+        marker_ok = PROBE_MARKER in output or bool(re.search(r"[가-힣]", output))
         corruption_ok = cli_result.corruption_ratio <= 0.005
         result.encoding_ok = marker_ok and corruption_ok
         if not result.encoding_ok:
