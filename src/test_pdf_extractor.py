@@ -14,7 +14,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from pdf_extractor import PDFTextExtractor, QUESTION_PATTERNS
+from pdf_extractor import PDFTextExtractor, QUESTION_PATTERNS, OCR_LOOSE_QUESTION_PATTERNS
 
 SAMPLE_PDF = PROJECT_ROOT / "sample" / "sample(65-67).pdf"
 
@@ -127,6 +127,38 @@ def test_monotonic_sequence_still_rejects_random_numbers():
     print(f"  PASS: 무작위 숫자열은 여전히 거부됨: {numbers}")
 
 
+def test_ocr_loose_pattern_requires_explicit_opt_in():
+    """OCR_LOOSE_QUESTION_PATTERNS는 extra_patterns로 명시할 때만 적용되는지 확인.
+
+    실측(물권기출 문1-문19.pdf의 Tesseract 재OCR 결과) 사례: 문제 번호 앞에
+    OCR이 장식/아이콘을 잡음 한두 글자로 오인식("| 문3", "훈 문9")하거나
+    그 잡음과 "문" 사이에 공백이 없고("|문4"), 원래는 별개 레이아웃이었던
+    텍스트(연도 등)가 같은 줄에 큰 공백을 두고 붙어버리는("문1 ... 22년
+    변호사시험") 경우가 있다. 기본 QUESTION_PATTERNS만으로는 이런 잡음을
+    감지하지 못해야 하고(회귀 없음), extra_patterns로 명시했을 때만
+    감지되어야 한다.
+    """
+    lines = [
+        ["1 문1                                                      22년 변호사시험"],
+        ["| 문 3                                                      26년 변호사시험"],
+        ["|문4"],
+        ["훈 문 9"],
+    ]
+    blocks = _blocks_from_lines(lines)
+    extractor = PDFTextExtractor.__new__(PDFTextExtractor)
+
+    default_patterns = extractor.detect_question_patterns(blocks)
+    assert default_patterns == [], default_patterns
+    print("  PASS: extra_patterns 없이는 OCR 잡음 섞인 형식이 감지되지 않음(기존 동작 보존)")
+
+    loose_patterns = extractor.detect_question_patterns(
+        blocks, extra_patterns=OCR_LOOSE_QUESTION_PATTERNS
+    )
+    ids = [p["question_id"] for p in loose_patterns]
+    assert ids == [1, 3, 4, 9], ids
+    print(f"  PASS: extra_patterns 지정 시 OCR 잡음 섞인 형식도 감지됨: {ids}")
+
+
 def test_real_sample_pdf_end_to_end():
     """실제 sample(65-67).pdf에서 문65~68이 모두 감지되는지 end-to-end 확인."""
     if not SAMPLE_PDF.exists():
@@ -147,6 +179,7 @@ def main():
         ("기존 '문N.'/'문N)' 회귀 확인", test_existing_dot_format_still_works),
         ("기존 '(N)'/'N.' 회귀 확인", test_existing_paren_and_bare_dot_still_work),
         ("본문 오탐 방지 확인", test_no_false_positive_on_prose_mentions),
+        ("OCR 전용 관대한 패턴은 명시적 opt-in일 때만 적용", test_ocr_loose_pattern_requires_explicit_opt_in),
         ("수열 완화 - 발췌본 시작번호", test_monotonic_sequence_tolerates_excerpt_start),
         ("수열 완화 - OCR 오인식 1건 허용", test_monotonic_sequence_tolerates_single_ocr_glitch),
         ("수열 완화 - 무작위 숫자열 여전히 거부", test_monotonic_sequence_still_rejects_random_numbers),

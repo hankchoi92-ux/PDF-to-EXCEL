@@ -19,7 +19,7 @@ from dataclasses import dataclass
 
 from preflight import Preflight
 from state_manager import StateManager, PipelineState
-from pdf_extractor import PDFTextExtractor
+from pdf_extractor import PDFTextExtractor, OCR_LOOSE_QUESTION_PATTERNS
 from local_hint_generator import LocalHintGenerator
 from chunk_manager import ChunkManager
 from text_metrics import TextMetrics
@@ -235,7 +235,9 @@ class AutoPipeline:
                             lang=pdf_cfg.get("ocr_lang", "kor"),
                             tesseract_cmd=pdf_cfg.get("ocr_tesseract_cmd") or None,
                         )
-                        ocr_patterns = extractor.detect_question_patterns(ocr_blocks)
+                        ocr_patterns = extractor.detect_question_patterns(
+                            ocr_blocks, extra_patterns=OCR_LOOSE_QUESTION_PATTERNS
+                        )
                         if extract_method == "ocr" or len(ocr_patterns) > len(patterns):
                             self.logger.info(
                                 "[Phase 1] OCR 재추출 채택: 문제 번호 %d개 → %d개",

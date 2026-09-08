@@ -45,6 +45,25 @@ QUESTION_PATTERNS: List[Tuple[str, str, str]] = [
     ("bare_dot", r"(?m)^[ \t]*(\d{1,3})[ \t]*\.[ \t]+", "{N}."),
 ]
 
+# extract_text_with_positions_ocr()로 재OCR한 텍스트 전용 관대한 패턴.
+# Tesseract가 문제 번호 옆 장식/아이콘을 임의의 한두 글자 잡음으로 잘못
+# 읽거나("| 문3", "훈 문9") 그 잡음과 "문" 사이에 공백이 없는 경우("|문4")가
+# 흔해, "question_dot"의 접두 조건(숫자 1~2자리 + 필수 공백)으로는 잡히지
+# 않는다. 또한 원래 레이아웃상 별개였던 텍스트(연도·시험명 등)가 OCR에서
+# 같은 줄에 큰 공백을 사이에 두고 붙어버려("문1 ... 22년 변호사시험"),
+# 번호 뒤가 줄 끝이 아니게 되는 경우도 있어 "공백 2개 이상"도 종결 조건으로
+# 추가한다. detect_question_patterns()에 extra_patterns로 명시적으로 전달할
+# 때만 적용되며, 기본 QUESTION_PATTERNS에는 영향을 주지 않는다(즉 pymupdf
+# 기반 일반 추출 경로는 기존 동작 그대로 유지).
+OCR_LOOSE_QUESTION_PATTERNS: List[Tuple[str, str, str]] = [
+    (
+        "question_dot_ocr_loose",
+        r"(?m)^[ \t]*(?:\S{1,2}[ \t]*)?문[ \t]?(\d{1,3})"
+        r"(?:[ \t]*[.)][ \t]+|[ \t]{2,}|(?=[ \t]*(?:\n|$)))",
+        "문{N}.",
+    ),
+]
+
 # 선지 기호 감지용 정규식
 _OPTION_REGEX: Dict[str, str] = {
     OptionSymbolType.CIRCLED.value: r"[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]",
@@ -287,16 +306,23 @@ class PDFTextExtractor:
     # 패턴 감지
     # ------------------------------------------------------------------
 
-    def detect_question_patterns(self, blocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def detect_question_patterns(
+        self,
+        blocks: List[Dict[str, Any]],
+        extra_patterns: Optional[List[Tuple[str, str, str]]] = None,
+    ) -> List[Dict[str, Any]]:
         """
         문제 번호 패턴 감지.
 
-        블록들을 "\\n\\n"으로 이어붙인 텍스트에 QUESTION_PATTERNS를 순서대로
-        시도하고, 감지된 번호가 "대체로 증가하는 수열"(오탐 배제 휴리스틱)을
+        블록들을 "\\n\\n"으로 이어붙인 텍스트에 QUESTION_PATTERNS(+ extra_patterns)를
+        순서대로 시도하고, 감지된 번호가 "대체로 증가하는 수열"(오탐 배제 휴리스틱)을
         이루는 패턴 중 매칭 개수가 가장 많은 것을 채택한다.
 
         Args:
             blocks: extract_text_with_positions() 결과 (또는 동일 구조의 리스트)
+            extra_patterns: QUESTION_PATTERNS에 추가로 시도할 패턴 목록(선택).
+                예: OCR 재추출 텍스트에는 OCR_LOOSE_QUESTION_PATTERNS를 전달.
+                기본값(None)이면 QUESTION_PATTERNS만 사용해 기존 동작과 동일.
 
         Returns:
             List[Dict]: 감지된 문제 패턴 (char_start 오름차순)
@@ -316,7 +342,7 @@ class PDFTextExtractor:
         full_text, ranges = self._join_blocks(blocks)
         best: Optional[Tuple[int, str, List[re.Match], List[int]]] = None
 
-        for _name, regex, template in QUESTION_PATTERNS:
+        for _name, regex, template in QUESTION_PATTERNS + list(extra_patterns or []):
             matches = list(re.finditer(regex, full_text))
             if len(matches) < 2:
                 continue
